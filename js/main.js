@@ -58,39 +58,44 @@
     });
   });
 
-  // --- FORMULARIO DE CONTACTO UNIFICADO CON SUPABASE ---
+  // --- FORMULARIO DE CONTACTO CON SUPABASE ---
   document.querySelectorAll("[data-contact-form]").forEach(function (form) {
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
 
-      // 1. Leer los datos ANTES de hacer reset
+      // 1. Obtener la referencia del cliente de Supabase (soporta window o variable global)
+      const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+
+      if (!client) {
+        showToast("Error: No se encontró la conexión con Supabase");
+        console.error("supabaseClient no está definido en el HTML.");
+        return;
+      }
+
+      // 2. Extraer los datos del formulario usando FormData
       const data = new FormData(form);
       const nombreVal = data.get("nombre") || "";
       const emailVal = data.get("email") || "";
       const mensajeVal = data.get("mensaje") || "";
 
-      // 2. Insertar los datos en Supabase
-      if (window.supabaseClient) {
-        const { error } = await window.supabaseClient
-          .from("contactos")
-          .insert([
-            {
-              nombre: nombreVal,
-              email: emailVal,
-              mensaje: mensajeVal
-            }
-          ]);
+      // 3. Insertar en la tabla 'contactos' de Supabase
+      const { error } = await client
+        .from("contactos")
+        .insert([
+          {
+            nombre: nombreVal,
+            email: emailVal,
+            mensaje: mensajeVal
+          }
+        ]);
 
-        if (error) {
-          showToast("Error al guardar: " + error.message);
-          console.error(error);
-          return;
-        }
+      if (error) {
+        showToast("Error al guardar: " + error.message);
+        console.error("Error Supabase:", error);
+      } else {
+        showToast("¡Mensaje guardado con éxito!");
+        form.reset();
       }
-
-      // 3. Notificar y limpiar el formulario
-      showToast("¡Mensaje guardado con éxito!");
-      form.reset();
     });
   });
 
