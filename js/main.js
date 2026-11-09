@@ -58,44 +58,41 @@
     });
   });
 
+  // --- FORMULARIO DE CONTACTO UNIFICADO CON SUPABASE ---
   document.querySelectorAll("[data-contact-form]").forEach(function (form) {
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       event.preventDefault();
-      showToast("Mensaje listo. También puedes escribirnos por WhatsApp o correo.");
+
+      // 1. Leer los datos ANTES de hacer reset
+      const data = new FormData(form);
+      const nombreVal = data.get("nombre") || "";
+      const emailVal = data.get("email") || "";
+      const mensajeVal = data.get("mensaje") || "";
+
+      // 2. Insertar los datos en Supabase
+      if (window.supabaseClient) {
+        const { error } = await window.supabaseClient
+          .from("contactos")
+          .insert([
+            {
+              nombre: nombreVal,
+              email: emailVal,
+              mensaje: mensajeVal
+            }
+          ]);
+
+        if (error) {
+          showToast("Error al guardar: " + error.message);
+          console.error(error);
+          return;
+        }
+      }
+
+      // 3. Notificar y limpiar el formulario
+      showToast("¡Mensaje guardado con éxito!");
       form.reset();
     });
   });
 
   window.Fiozil = { showToast: showToast };
 })();
-/// --- Conexión del formulario de contacto a Supabase ---
-const contactForm = document.querySelector('[data-contact-form]');
-
-if (contactForm) {
-  contactForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    // 1. Obtener directamente los elementos del formulario por su propiedad 'name'
-    const nombreVal = contactForm.elements['nombre'] ? contactForm.elements['nombre'].value.trim() : '';
-    const emailVal = contactForm.elements['email'] ? contactForm.elements['email'].value.trim() : '';
-    const mensajeVal = contactForm.elements['mensaje'] ? contactForm.elements['mensaje'].value.trim() : '';
-
-    // 2. Insertar los datos en Supabase
-    const { data, error } = await supabaseClient
-      .from('contactos')
-      .insert([
-        { 
-          nombre: nombreVal, 
-          email: emailVal, 
-          mensaje: mensajeVal 
-        }
-      ]);
-
-    if (error) {
-      alert('Error al enviar el mensaje: ' + error.message);
-    } else {
-      alert('¡Mensaje enviado con éxito a la base de datos!');
-      contactForm.reset();
-    }
-  });
-}
