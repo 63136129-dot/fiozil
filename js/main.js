@@ -68,3 +68,34 @@
 
   window.Fiozil = { showToast: showToast };
 })();
+// --- Conexión del formulario de contacto a Supabase ---
+const contactForm = document.querySelector('[data-contact-form]');
+
+if (contactForm) {
+  contactForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Captura los valores ingresados usando los atributos 'name' del HTML
+    const nombreVal = contactForm.querySelector('[name="nombre"]').value;
+    const emailVal = contactForm.querySelector('[name="email"]').value;
+    const mensajeVal = contactForm.querySelector('[name="mensaje"]').value;
+
+    // Envia los datos a la tabla 'contactos' de Supabase
+    const { data, error } = await supabaseClient
+      .from('contactos')
+      .insert([
+        { 
+          nombre: nombreVal, 
+          email: emailVal, 
+          mensaje: mensajeVal 
+        }
+      ]);
+
+    if (error) {
+      alert('Error al enviar el mensaje: ' + error.message);
+    } else {
+      alert('¡Mensaje enviado con éxito a la base de datos!');
+      contactForm.reset();
+    }
+  });
+}
