@@ -68,19 +68,19 @@
 
   window.Fiozil = { showToast: showToast };
 })();
-// --- Conexión del formulario de contacto a Supabase ---
+/// --- Conexión del formulario de contacto a Supabase ---
 const contactForm = document.querySelector('[data-contact-form]');
 
 if (contactForm) {
   contactForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Captura los valores ingresados usando los atributos 'name' del HTML
-    const nombreVal = contactForm.querySelector('[name="nombre"]').value;
-    const emailVal = contactForm.querySelector('[name="email"]').value;
-    const mensajeVal = contactForm.querySelector('[name="mensaje"]').value;
+    // 1. Obtener directamente los elementos del formulario por su propiedad 'name'
+    const nombreVal = contactForm.elements['nombre'] ? contactForm.elements['nombre'].value.trim() : '';
+    const emailVal = contactForm.elements['email'] ? contactForm.elements['email'].value.trim() : '';
+    const mensajeVal = contactForm.elements['mensaje'] ? contactForm.elements['mensaje'].value.trim() : '';
 
-    // Envia los datos a la tabla 'contactos' de Supabase
+    // 2. Insertar los datos en Supabase
     const { data, error } = await supabaseClient
       .from('contactos')
       .insert([
