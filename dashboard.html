@@ -6,85 +6,134 @@
   <title>Dashboard - Mensajes Recibidos</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: sans-serif; background: #f8fafc; margin: 0; padding: 2rem; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-    h1 { color: #0f769e; margin: 0; }
-    .btn-logout { background: #dc2626; color: white; padding: .5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
-    th { background: #0f769e; color: white; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; margin: 0; padding: 2rem; color: #333; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: white; padding: 1.5rem 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    h1 { color: #0f769e; margin: 0; font-size: 1.8rem; }
+    .user-info { font-size: 0.9rem; color: #666; margin-right: 1rem; }
+    .header-actions { display: flex; align-items: center; }
+    .btn-logout { background: #dc2626; color: white; padding: .6rem 1.2rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+    .btn-logout:hover { background: #b91c1c; }
+    .table-container { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 1rem 1.2rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #0f769e; color: white; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
     tr:hover { background: #f1f5f9; }
+    .empty-msg { text-align: center; padding: 2rem; color: #64748b; font-style: italic; }
+    .error-msg { text-align: center; padding: 2rem; color: #dc2626; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <h1>Contactos Recibidos</h1>
-    <button class="btn-logout" id="btnLogout">Cerrar Sesión</button>
+  <div class="container">
+    <div class="header">
+      <h1>Contactos Recibidos</h1>
+      <div class="header-actions">
+        <span class="user-info" id="userEmail">Cargando usuario...</span>
+        <button class="btn-logout" id="btnLogout">Cerrar Sesión</button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Mensaje</th>
+          </tr>
+        </thead>
+        <tbody id="contactosTable">
+          <tr><td colspan="4" class="empty-msg">Cargando registros...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Fecha</th>
-        <th>Nombre</th>
-        <th>Correo</th>
-        <th>Mensaje</th>
-      </tr>
-    </thead>
-    <tbody id="contactosTable">
-      <tr><td colspan="4">Cargando registros...</td></tr>
-    </tbody>
-  </table>
-
   <script>
+    // 1. Configuración de Supabase
     const SUPABASE_URL = 'https://qalinzpceicvetzhpwqw.supabase.co';
-    const SUPABASE_ANON_KEY = 'TU_SUPABASE_ANON_KEY_AQUI'; // Coloca tu anon key
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_ANON_KEY = 'sb_publishable_dT1CXqwj59kK7ydy1f7zjg_TJiOZhgx'; // <-- Asegúrate de tener tu clave Anon Key real aquí
 
-    // Verificar sesión activa antes de cargar
-    async function checkAuth() {
-      const { data: { session } } = await supabase.auth.getSession();
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const ADMIN_EMAIL = '63136129@idexpasco.edu.pe'; // Correo de administrador autorizado
+
+    // 2. Verificar Sesión y Rol de Administrador
+    async function checkAuthAndLoad() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      
+      // Si no hay sesión, expulsar al login
       if (!session) {
         window.location.href = 'login.html';
-      } else {
-        loadContactos();
-      }
-    }
-
-    async function loadContactos() {
-      const { data, error } = await supabase
-        .from('contactos')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      const tbody = document.getElementById('contactosTable');
-      tbody.innerHTML = '';
-
-      if (error || !data.length) {
-        tbody.innerHTML = '<tr><td colspan="4">No hay mensajes registrados.</td></tr>';
         return;
       }
 
-      data.forEach(item => {
-        const row = document.createElement('tr');
-        const fecha = new Date(item.created_at).toLocaleString('es-PE');
-        row.innerHTML = `
-          <td>${fecha}</td>
-          <td>${item.nombre || '-'}</td>
-          <td>${item.email || '-'}</td>
-          <td>${item.mensaje || '-'}</td>
-        `;
-        tbody.appendChild(row);
-      });
+      // Validar si el correo corresponde al administrador
+      const userEmail = session.user.email;
+      if (userEmail !== ADMIN_EMAIL) {
+        alert('Acceso denegado: No tienes permisos de administrador.');
+        await supabaseClient.auth.signOut();
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // Mostrar el correo activo en la cabecera
+      document.getElementById('userEmail').textContent = userEmail;
+
+      // Cargar la lista de mensajes
+      loadContactos();
     }
 
+    // 3. Cargar datos de la tabla 'contactos'
+    async function loadContactos() {
+      const tbody = document.getElementById('contactosTable');
+      
+      try {
+        const { data, error } = await supabaseClient
+          .from('contactos')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error Supabase:', error);
+          tbody.innerHTML = `<tr><td colspan="4" class="error-msg">Error al cargar registros: ${error.message}</td></tr>`;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">No hay mensajes registrados aún.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          const fecha = item.created_at ? new Date(item.created_at).toLocaleString('es-PE') : '-';
+          
+          row.innerHTML = `
+            <td>${fecha}</td>
+            <td><strong>${item.nombre || '-'}</strong></td>
+            <td><a href="mailto:${item.email}" style="color: #0f769e; text-decoration: none;">${item.email || '-'}</a></td>
+            <td>${item.mensaje || '-'}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      } catch (err) {
+        console.error('Error inesperado:', err);
+        tbody.innerHTML = '<tr><td colspan="4" class="error-msg">Ocurrió un error inesperado al conectar con la base de datos.</td></tr>';
+      }
+    }
+
+    // 4. Cerrar sesión
     document.getElementById('btnLogout').addEventListener('click', async () => {
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       window.location.href = 'login.html';
     });
 
-    checkAuth();
+    // Iniciar verificación al cargar
+    checkAuthAndLoad();
   </script>
 </body>
 </html>
