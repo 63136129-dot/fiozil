@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Mensajes Recibidos</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; background: #f8fafc; margin: 0; padding: 2rem; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    h1 { color: #0f769e; margin: 0; }
+    .btn-logout { background: #dc2626; color: white; padding: .5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #0f769e; color: white; }
+    tr:hover { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Contactos Recibidos</h1>
+    <button class="btn-logout" id="btnLogout">Cerrar Sesión</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Nombre</th>
+        <th>Correo</th>
+        <th>Mensaje</th>
+      </tr>
+    </thead>
+    <tbody id="contactosTable">
+      <tr><td colspan="4">Cargando registros...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    const SUPABASE_URL = 'https://qalinzpceicvetzhpwqw.supabase.co';
+    const SUPABASE_ANON_KEY = 'TU_SUPABASE_ANON_KEY_AQUI'; // Coloca tu anon key
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Verificar sesión activa antes de cargar
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = 'login.html';
+      } else {
+        loadContactos();
+      }
+    }
+
+    async function loadContactos() {
+      const { data, error } = await supabase
+        .from('contactos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const tbody = document.getElementById('contactosTable');
+      tbody.innerHTML = '';
+
+      if (error || !data.length) {
+        tbody.innerHTML = '<tr><td colspan="4">No hay mensajes registrados.</td></tr>';
+        return;
+      }
+
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        const fecha = new Date(item.created_at).toLocaleString('es-PE');
+        row.innerHTML = `
+          <td>${fecha}</td>
+          <td>${item.nombre || '-'}</td>
+          <td>${item.email || '-'}</td>
+          <td>${item.mensaje || '-'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html';
+    });
+
+    checkAuth();
+  </script>
+</body>
+</html>
